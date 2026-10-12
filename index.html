@@ -1,0 +1,70 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>岩隧系办公室借用登记表</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#6b7280;--line:#e6e9ef;--blue:#315efb;--busy:#e8edff;--busyline:#879dfc;--hour:60px}*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text)}.wrap{max-width:760px;margin:auto;padding:18px 14px 40px}.head h1{font-size:24px;margin:6px 0}.head p{margin:0 0 18px;color:var(--muted);font-size:14px}.card{background:#fff;border-radius:18px;padding:16px;box-shadow:0 8px 30px rgba(31,41,55,.06);margin-bottom:14px}.weeknav{display:flex;align-items:center;gap:8px}.weeknav button,.btn{border:0;border-radius:10px;padding:10px 13px;background:#eef1f7;font-size:14px}.weektitle{font-weight:700;text-align:center;flex:1}.days{display:flex;gap:8px;overflow:auto;padding-top:12px}.day{min-width:72px;text-align:center;padding:10px 8px;border-radius:12px;background:#f6f7fa;cursor:pointer}.day.active{background:#172033;color:#fff}.day small{display:block;opacity:.7;margin-top:3px}.dayhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.dayhead b{font-size:18px}.add{border:0;background:var(--blue);color:#fff;padding:10px 13px;border-radius:10px;font-size:14px}.calendar{position:relative;margin-left:54px;height:calc(11 * var(--hour));border-top:1px solid var(--line);background:repeating-linear-gradient(to bottom,transparent 0,transparent calc(var(--hour) - 1px),var(--line) calc(var(--hour) - 1px),var(--line) var(--hour));border-radius:0 0 10px 10px}.hourlabel{position:absolute;right:calc(100% + 9px);transform:translateY(-8px);font-size:12px;color:var(--muted);white-space:nowrap}.booking{position:absolute;left:6px;right:6px;background:var(--busy);border-left:4px solid var(--busyline);border-radius:8px;padding:7px 9px;overflow:hidden;cursor:pointer;font-size:13px;box-shadow:0 2px 8px rgba(49,94,251,.08)}.booking strong{display:block}.booking small{color:#536079}.emptyhint{position:absolute;top:12px;left:12px;color:#9ca3af;font-size:13px}.foot{font-size:12px;color:var(--muted);line-height:1.6;padding:2px 5px}.modal{position:fixed;inset:0;background:rgba(10,15,25,.42);display:none;align-items:flex-end;justify-content:center;z-index:5}.modal.show{display:flex}.sheet{background:#fff;width:min(760px,100%);border-radius:22px 22px 0 0;padding:20px 18px calc(20px + env(safe-area-inset-bottom))}.sheet h2{margin:0 0 5px;font-size:20px}.sheet p{color:var(--muted);font-size:14px;margin:0 0 14px}.row{display:flex;gap:10px}.field{margin:11px 0;flex:1}.field label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}.field input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px}.actions{display:flex;gap:10px;margin-top:16px}.actions button{border:0;border-radius:11px;padding:12px 14px;font-size:15px}.primary{flex:1;background:var(--blue);color:#fff}.danger{background:#fff0f1;color:#c2414b}.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#172033;color:#fff;padding:10px 14px;border-radius:10px;font-size:14px;display:none;z-index:9}.toast.show{display:block}
+</style></head><body><div class="wrap"><div class="head"><h1>岩隧系办公室借用登记表</h1><p>按 30 分钟选择开始和结束时间，已登记的时段会直接显示在当天日历中。</p></div><div class="card"><div class="weeknav"><button id="prev">‹ 上周</button><div class="weektitle" id="weekTitle"></div><button id="next">下周 ›</button></div><div class="days" id="days"></div></div><div class="card"><div class="dayhead"><b id="dayTitle"></b><button class="add" id="add">＋ 登记时间</button></div><div class="calendar" id="calendar"></div></div><div class="foot">演示版数据保存在当前浏览器中；接入云数据库后，多位老师可实时看到同一份使用记录。</div></div>
+<div class="modal" id="modal"><div class="sheet"><h2 id="modalTitle">登记使用</h2><p id="modalDesc"></p><div id="formArea"><div class="row"><div class="field"><label>开始时间</label><select id="start"></select></div><div class="field"><label>结束时间</label><select id="end"></select></div></div><div class="field"><label>姓名</label><input id="name" placeholder="例如：张老师" maxlength="20"></div><div class="field"><label>用途（可选）</label><input id="purpose" placeholder="例如：办公 / 开会" maxlength="30"></div></div><div class="actions"><button id="cancel">关闭</button><button class="danger" id="remove" style="display:none">取消占用</button><button class="primary" id="save">确认登记</button></div></div></div><div class="toast" id="toast"></div>
+<script>
+const OPEN=8,CLOSE=19,HOUR=60,storeKey='office-room-bookings-v2';let anchor=startOfWeek(new Date()),selected=new Date(),currentId=null;
+function startOfWeek(d){let x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()-(x.getDay()+6)%7);return x}function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}function fmt(d){return `${d.getMonth()+1}月${d.getDate()}日`}function mins(t){let[a,b]=t.split(':').map(Number);return a*60+b}
+let bookings=[];
+function esc(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+
+const SUPABASE_URL='https://rcejodltnabqvnrruafm.supabase.co';
+const SUPABASE_KEY='sb_publishable_yd1Vs7mEyHoSsixb5ZLO1A_YNCqvXiV';
+const API=SUPABASE_URL+'/rest/v1/office_bookings';
+const headers={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'};
+
+async function loadBookings(){
+  try{
+    const r=await fetch(API+'?select=*&order=booking_date.asc,start_time.asc',{headers});
+    if(!r.ok) throw new Error(await r.text());
+    const rows=await r.json();
+    bookings=rows.map(x=>({
+      id:x.id,date:x.booking_date,
+      start:String(x.start_time).slice(0,5),end:String(x.end_time).slice(0,5),
+      name:x.teacher_name,purpose:x.purpose||''
+    }));
+    renderCalendar();
+  }catch(e){console.error(e);notify('云端数据加载失败');}
+}
+function render(){let last=new Date(anchor);last.setDate(last.getDate()+6);weekTitle.textContent=`${fmt(anchor)} – ${fmt(last)}`;days.innerHTML='';for(let i=0;i<7;i++){let d=new Date(anchor);d.setDate(d.getDate()+i);let el=document.createElement('div');el.className='day '+(iso(d)==iso(selected)?'active':'');el.innerHTML=`${['一','二','三','四','五','六','日'][i]}<small>${d.getMonth()+1}/${d.getDate()}</small>`;el.onclick=()=>{selected=d;render()};days.appendChild(el)}renderCalendar()}
+function renderCalendar(){dayTitle.textContent=fmt(selected);calendar.innerHTML='';for(let h=OPEN;h<=CLOSE;h++){let l=document.createElement('span');l.className='hourlabel';l.style.top=((h-OPEN)*HOUR)+'px';l.textContent=String(h).padStart(2,'0')+':00';calendar.appendChild(l)}let bs=bookings.filter(b=>b.date===iso(selected)).sort((a,b)=>mins(a.start)-mins(b.start));if(!bs.length){let x=document.createElement('div');x.className='emptyhint';x.textContent='今天暂无使用记录';calendar.appendChild(x)}bs.forEach(b=>{let el=document.createElement('div');el.className='booking';el.style.top=((mins(b.start)-OPEN*60)/60*HOUR)+'px';el.style.height=Math.max(28,(mins(b.end)-mins(b.start))/60*HOUR)+'px';el.innerHTML=`<strong>${esc(b.start)}–${esc(b.end)} · ${esc(b.name)}</strong>${b.purpose?`<small>${esc(b.purpose)}</small>`:''}`;el.onclick=()=>openExisting(b);calendar.appendChild(el)})}
+function openNew(){currentId=null;modalTitle.textContent='登记使用';modalDesc.textContent=fmt(selected);formArea.style.display='block';save.style.display='block';remove.style.display='none';nameInput.value=localStorage.getItem('office-last-name')||'';purposeInput.value='';modal.classList.add('show')}
+function openExisting(b){currentId=b.id;modalTitle.textContent='使用记录';modalDesc.textContent=`${fmt(selected)} · ${b.start}–${b.end} · ${b.name}${b.purpose?' · '+b.purpose:''}`;formArea.style.display='none';save.style.display='none';remove.style.display='block';modal.classList.add('show')}
+function close(){modal.classList.remove('show');currentId=null}
+function notify(t){toast.textContent=t;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2200)}
+function initTimeSelects(){const times=[];for(let h=7;h<=20;h++){for(const m of [0,30]){if(h===20&&m===30)continue;times.push(String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'))}}for(const id of ['start','end']){const el=document.getElementById(id);el.innerHTML=times.map(t=>`<option value="${t}">${t}</option>`).join('')}document.getElementById('start').value='09:00';document.getElementById('end').value='10:00'}
+initTimeSelects();
+const weekTitle=document.getElementById('weekTitle'),days=document.getElementById('days'),dayTitle=document.getElementById('dayTitle'),calendar=document.getElementById('calendar'),modal=document.getElementById('modal'),formArea=document.getElementById('formArea'),save=document.getElementById('save'),remove=document.getElementById('remove'),toast=document.getElementById('toast'),startInput=document.getElementById('start'),endInput=document.getElementById('end'),nameInput=document.getElementById('name'),purposeInput=document.getElementById('purpose');
+document.getElementById('prev').onclick=()=>{anchor.setDate(anchor.getDate()-7);selected=new Date(anchor);render()};
+document.getElementById('next').onclick=()=>{anchor.setDate(anchor.getDate()+7);selected=new Date(anchor);render()};
+document.getElementById('add').onclick=openNew;document.getElementById('cancel').onclick=close;modal.onclick=e=>{if(e.target===modal)close()};
+
+save.onclick=async()=>{
+  let s=startInput.value,e=endInput.value,n=nameInput.value.trim(),p=purposeInput.value.trim(),date=iso(selected);
+  if(!s||!e||mins(e)<=mins(s)){notify('结束时间必须晚于开始时间');return}
+  if(!n){notify('请填写姓名');return}
+  save.disabled=true; save.textContent='正在登记…';
+  try{
+    const r=await fetch(API,{method:'POST',headers:{...headers,'Prefer':'return=representation'},body:JSON.stringify({
+      booking_date:date,start_time:s,end_time:e,teacher_name:n,purpose:p||null
+    })});
+    if(!r.ok){
+      const msg=await r.text();
+      if(r.status===409 || msg.includes('no_overlapping_bookings')) notify('这个时间段已被占用');
+      else {console.error(msg);notify('登记失败，请重试')}
+      return;
+    }
+    localStorage.setItem('office-last-name',n);
+    close(); notify('登记成功'); await loadBookings();
+  }catch(err){console.error(err);notify('网络连接失败')}
+  finally{save.disabled=false;save.textContent='确认登记'}
+};
+
+/* 暂不开放匿名删除，避免任何拿到链接的人删除其他老师的记录 */
+remove.onclick=()=>notify('云端版暂不开放直接取消，请联系管理员');
+
+render();
+loadBookings();
+setInterval(loadBookings,30000);
+</script></body></html>
